@@ -1,0 +1,13 @@
+{
+ "diff": "2018",
+ "run": 2,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "Yes. The new cache key drops two inputs that `secp256k1_rangeproof_verify` actually depends on, so a cache hit can vouch for a proof in a context where it was never verified.\n\n- **Asset commitment is gone from the key.** The range proof is verified against a generator derived from the asset commitment. A proof that is valid for value commitment V under asset generator A1 is not valid under A2. With this change, once `(proof, V)` is cached from a valid tx, any later output reusing the same proof bytes and V with a different asset commitment is accepted without verification.\n- **scriptPubKey is gone from the key.** Elements passes the output script as the proof's extra-commit data, binding the range proof to the script it pays to. Dropping it means a cached proof validates the same `(proof, V)` under any script.\n\nSince the cache is populated during mempool acceptance with `store` set, an attacker can seed it with a legitimate tx and then submit a second one that reuses the proof under a different asset commitment or script. The second tx skips range-proof verification entirely.\n\nTwo smaller points:\n\n- **The old code was also broken, in a different way.** It wrapped the value commitment in a `CPubKey`, but commitments start with 0x08 or 0x09, which `CPubKey` treats as invalid with size zero. So the old key effectively omitted the value commitment. The new code fixes that but overcorrects by removing the asset commitment and script.\n- **No length prefixes.** Both old and new hash variable-length fields by raw concatenation. With the commitment last and fixed at 33 bytes this is unambiguous in practice, but a length prefix on the proof would make it robust.\n\nThe key should hash nonce, proof, value commitment, asset commitment, and scriptPubKey, ideally with length-prefixed fields.",
+ "is_error": false,
+ "stderr": ""
+}

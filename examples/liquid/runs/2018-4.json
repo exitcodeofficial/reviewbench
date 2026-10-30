@@ -1,0 +1,13 @@
+{
+ "diff": "2018",
+ "run": 4,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "Yes. The new cache key drops two inputs that the actual range proof verification depends on, which makes the cache unsound.\n\n**The bug.** In Elements, a range proof is verified against three things: the value commitment (the Pedersen commitment being proven), the asset commitment (it is parsed into the `secp256k1_generator` the proof is checked under), and the `scriptPubKey` (passed as `extra_commit`). The same proof bytes are valid under one generator and invalid under another, and valid with one extra-commit and invalid with another. The old key covered the asset commitment and the scriptPubKey. The new key covers only the proof and value commitment.\n\n**Why it matters.** Once a `(proof, valueCommitment)` pair has been verified and stored (for example via mempool acceptance of a legitimate transaction), a second transaction can reuse those exact proof and value commitment bytes with a different asset commitment or a different scriptPubKey. The cache lookup hits, `VerifyRangeProof` returns true, and the real verification is skipped. That lets an invalid range proof pass on a node with a warm cache while a node with a cold cache rejects it. That is a consensus split and a potential inflation vector, since the proof no longer binds to the asset generator it was constructed for.\n\n**Side note on the old code.** The old version had its own problem that this diff may have been trying to fix. The value commitment was wrapped in `CPubKey`, but commitments start with a 0x08 or 0x09 prefix, so `CPubKey::Set` rejected it and the value commitment was silently omitted from the key. Fixing that is correct. Removing the asset commitment and scriptPubKey at the same time is not.\n\n**What the key should contain.** Nonce, range proof, value commitment, asset commitment, and scriptPubKey, ideally with length prefixes since the proof and script are both variable length.",
+ "is_error": false,
+ "stderr": ""
+}

@@ -1,0 +1,13 @@
+{
+ "diff": "2018",
+ "run": 3,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "Yes. The new cache key drops two inputs that the range proof's validity actually depends on, which turns the cache into a verification bypass.\n\n**What the proof is bound to.** In Elements, a range proof is verified against three things: the value commitment, the asset commitment (it is the Pedersen generator the proof is checked under), and the scriptPubKey (passed as the extra commit data). The old key hashed all of them. The new `ComputeEntry` hashes only the nonce, the proof bytes, and the value commitment.\n\n**Why that is exploitable.** Once a proof is verified and cached for (proof, value commitment, asset A1, script S1), any later output carrying the same proof and value commitment but a different asset commitment or scriptPubKey hits the cache and is accepted without being verified. A proof that is valid under generator A1 is generally not valid under A2, and the same value commitment under a different generator commits to a different, possibly out-of-range, value. So an attacker can get an invalid proof through, which breaks the range check that prevents inflation. Dropping the scriptPubKey also removes the binding of the proof to the output script, which is the whole reason it is passed as extra commit data.\n\n**Fix.** Keep the asset commitment and scriptPubKey in the key, e.g. have the new overload take all three vectors plus the script and write them all into the hash. The other changes in the diff are fine or improvements: using the raw value commitment bytes instead of round-tripping through `CPubKey` is cleaner, `.data()` avoids the undefined `&v[0]` on an empty vector, and `nonce.size()` is just 32.",
+ "is_error": false,
+ "stderr": ""
+}

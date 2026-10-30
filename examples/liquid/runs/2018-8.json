@@ -1,0 +1,13 @@
+{
+ "diff": "2018",
+ "run": 8,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "Yes. The new cache key drops two inputs that the range proof verification actually depends on: the asset commitment and the scriptPubKey.\n\nIn Elements, the range proof is verified with `secp256k1_rangeproof_verify`, where the asset commitment supplies the generator and the scriptPubKey is passed as the extra commitment. Both are hashed into the proof's challenge, so the same proof bytes and value commitment can be valid under one (asset, script) pair and invalid under another.\n\nThe old key included all of them (nonce, zero hash, proof, value commitment via CPubKey, asset commitment, scriptPubKey). The new key is only nonce + proof + value commitment. Consequences:\n\n- **Cache poisoning across contexts.** A proof that verified once for output (C, assetA, scriptA) will be reported valid for (C, assetB, scriptB) without ever running the verifier. The cache stores entries after successful verification, so an attacker can get an entry inserted by relaying a legitimate transaction, then reuse the proof and value commitment in a different output with a different scriptPubKey or asset commitment.\n- **Breaks the binding that extra_commit is there to provide.** The scriptPubKey is committed precisely so a range proof can't be lifted onto another output. Keying the cache without it undoes that.\n- **Potential soundness hole for asset generators.** A commitment proven in-range against one generator is accepted as in-range against another, so the range check can be skipped for a commitment that was never validated with that generator.\n\nThe fix is to keep the asset commitment and scriptPubKey in the hashed key, for example by passing them to the new overload and writing them after the value commitment. Removing the meaningless `uint256()` placeholder and the CPubKey wrapper is fine on its own, but the key must still cover every input to the verifier.\n\nMinor and not a bug: using `nonce.size()` instead of the literal 32 is equivalent for uint256, and the three-argument overload doesn't collide with the six-argument one.",
+ "is_error": false,
+ "stderr": ""
+}

@@ -1,0 +1,13 @@
+{
+ "diff": "final",
+ "run": 8,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "Nothing in this diff is functionally wrong. The fix is sound and the serialization reasoning holds. A few observations, from most to least substantive:\n\n**The core change is correct.** The old range-proof key concatenated two variable-length fields (proof and scriptPubKey) with no length prefixes, so distinct argument tuples could produce the same hash. Switching to `CHashWriter` fixes that because vectors and scripts serialize with a CompactSize prefix, while `uint256` and the 32-byte padding array serialize raw. The nonce plus padding still totals exactly 64 bytes, so the midstate optimization the comment describes is preserved. Copy-initializing a `CHashWriter` works despite its const members, and `GetSHA256()` matches the old single-SHA256 output.\n\n**The surjection key was not actually ambiguous before.** Its only variable-length field, the proof, sat between a fixed 32-byte hash and a fixed 64-byte generator, so the total length disambiguated it. Adding length prefixes and `vTags` is harmless and defensible, but the commit message should not claim this side had a collision bug.\n\n**One comment is slightly inaccurate.** The surjection comment says the wtxid commits to all other data. The tags come from the spent outputs' asset commitments, which the wtxid only commits to transitively through the input outpoints. That still makes the key sound, but the wording overstates it.\n\nMinor nits:\n\n- **Test hooks in the production header.** Unguarded `Test*` functions ship in the consensus library. A friend test class or a `#ifdef` would keep them out of the public API.\n- **Include ordering.** The new `hash.h` include breaks the alphabetical order of the block.\n- **Style inconsistencies.** Missing space after the comma in the constructor initializers, and mixed `script_pub_key` versus `vTags` naming within the same function set.\n- **\"Stateless\" context.** The secp256k1 context is not stateless, but verification results do not depend on its state. The note could just say the context does not affect the result.",
+ "is_error": false,
+ "stderr": ""
+}

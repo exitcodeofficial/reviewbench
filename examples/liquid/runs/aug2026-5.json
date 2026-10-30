@@ -1,0 +1,13 @@
+{
+ "diff": "aug2026",
+ "run": 5,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "**Short answer: no, the diff itself looks correct.** It is a sound fix, and arguably a security-relevant one.\n\n**What it fixes.** The rangeproof verifier is bound to four inputs: the proof, the value commitment, the asset generator, and the scriptPubKey passed as extra commit data. The old cache key only covered the first two. So a proof that verified once for (value, asset A, script X) would hit the cache for (value, asset B, script Y) and be accepted without ever calling the verifier. That matters because reusing the same value commitment under a different blinded generator of the same asset reopens it to a value the prover controls, which is the shape of an inflation bug. The surjection-proof key already included its extra context, so this just brings the rangeproof key in line with it.\n\n**Mechanics check.** Signature, header, and the single call site all agree. CScript exposes data and size, CSHA256::Write chains, and the salted hasher is still copied per call. The cache has no persistence, so changing the key derivation needs no migration.\n\nTwo things worth noting, neither a bug in the diff:\n\n- **Raw concatenation of variable-length fields.** The key is proof, value commitment, asset commitment, scriptPubKey hashed back to back with no length prefixes. The two middle fields are fixed at 33 bytes when valid, but the proof and scriptPubKey are variable, so field boundaries are not unambiguous in principle. This weakness predates the patch, and exploiting it would also require the balance equation to work out, so it is a hardening nit rather than a defect. If you are touching this code anyway, hashing through a serializer or writing compact-size lengths before each field would close it.\n- **Other callers.** The diff only updates one call site. I could not check whether any test, bench, or fuzz code also calls the old signature, since the source tree is not in this directory. If the build is green, that is settled.",
+ "is_error": false,
+ "stderr": ""
+}

@@ -1,0 +1,13 @@
+{
+ "diff": "aug2026",
+ "run": 9,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "No functional error. This is the correct fix for a real cache-key-collision bug, and the logic is sound.\n\n**What it fixes.** Range proof verification depends on four inputs: the proof, the value commitment, the asset commitment (the generator), and the scriptPubKey (passed as extra commit data). The old cache key only covered the first two. A cached success for one proof could be replayed against a different asset generator or output script, letting an invalid output through verification. Adding both missing inputs to the key closes that.\n\n**Things that check out:**\n- Header and source signatures match, and the single call site is updated.\n- The verify path already receives both new arguments, so no plumbing change is needed.\n- `CScript` is a prevector with `data()` and `size()`, and the header already references it, so no new include is required.\n\n**One design nit, not a correctness bug.** The fields are concatenated without length prefixes. Proof and scriptPubKey are both variable-length, with two fixed 33-byte commitments between them. In principle two different tuples can produce the same byte stream by shifting the field boundaries by a byte. Exploiting that requires crafting a valid proof whose trailing bytes form a well-formed commitment prefix, which the rangeproof format makes impractical, and the pre-existing code had the same shape. Still, writing each field's length before its bytes would make the key unambiguous at zero cost. The surjection proof cache does not have this exposure since it keys on the wtxid, which covers the whole transaction.",
+ "is_error": false,
+ "stderr": ""
+}

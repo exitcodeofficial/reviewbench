@@ -1,0 +1,200 @@
+{
+ "2018-1": {
+  "label": "caught",
+  "severity": null,
+  "evidence": "A later call with the same proof and value commitment but a different asset generator or a different scriptPubKey computes the same key, hits the cache, and returns true",
+  "note": "Also adds a minor length-prefix nit."
+ },
+ "2018-2": {
+  "label": "caught",
+  "severity": null,
+  "evidence": "any later output reusing the same proof bytes and V with a different asset commitment is accepted without verification",
+  "note": "Also says dropping scriptPubKey lets the cached proof validate under any script."
+ },
+ "2018-3": {
+  "label": "caught",
+  "severity": null,
+  "evidence": "any later output carrying the same proof and value commitment but a different asset commitment or scriptPubKey hits the cache and is accepted without being verified",
+  "note": ""
+ },
+ "2018-4": {
+  "label": "caught",
+  "severity": null,
+  "evidence": "a second transaction can reuse those exact proof and value commitment bytes with a different asset commitment or a different scriptPubKey. The cache lookup hits",
+  "note": ""
+ },
+ "2018-5": {
+  "label": "caught",
+  "severity": null,
+  "evidence": "any later output that reuses the same proof and value commitment will hit the cache and be reported valid, even if its asset commitment or scriptPubKey is different",
+  "note": ""
+ },
+ "2018-6": {
+  "label": "caught",
+  "severity": null,
+  "evidence": "a later check with the same proof and value commitment but a different asset commitment or scriptPubKey returns true without running verification",
+  "note": ""
+ },
+ "2018-7": {
+  "label": "caught",
+  "severity": null,
+  "evidence": "Two calls that differ only in those inputs now map to the same cache entry, so a result stored for one can be returned for the other.",
+  "note": "'Those inputs' = vchAssetCommitment and scriptPubKey, named in the preceding sentence."
+ },
+ "2018-8": {
+  "label": "caught",
+  "severity": null,
+  "evidence": "A proof that verified once for output (C, assetA, scriptA) will be reported valid for (C, assetB, scriptB) without ever running the verifier.",
+  "note": ""
+ },
+ "2018-9": {
+  "label": "caught",
+  "severity": null,
+  "evidence": "will now return true for the same proof and value commitment paired with a different asset commitment or a different scriptPubKey, without ever calling the verifier",
+  "note": ""
+ },
+ "2018-10": {
+  "label": "caught",
+  "severity": null,
+  "evidence": "any later output reusing the same proof and value commitment is accepted without reverification, even with a different asset commitment or a different scriptPubKey",
+  "note": ""
+ },
+ "aug2026-1": {
+  "label": "caught",
+  "severity": "downplayed",
+  "evidence": "That means two different inputs can hash to the same key if you shift the boundary",
+  "note": "Borderline severity: calls it 'real' and 'should not admit collisions', but top line is 'No, the core change looks correct', exploit 'not obvious', says the diff does not introduce it."
+ },
+ "aug2026-2": {
+  "label": "caught",
+  "severity": "downplayed",
+  "evidence": "That makes shift collisions possible in principle",
+  "note": "Framed as 'One hardening nit, not a bug in what you changed'; 'I could not construct a practical exploit'."
+ },
+ "aug2026-3": {
+  "label": "missed",
+  "severity": null,
+  "evidence": "That is unambiguous only because the two commitments in the middle are always 33 bytes",
+  "note": "Notes no length prefixes but asserts the key is unambiguous (no collision), so fails 'different splits can collide'; calls it 'One nit, not an error'."
+ },
+ "aug2026-4": {
+  "label": "caught",
+  "severity": "serious",
+  "evidence": "two different (proof, value, asset, script) tuples can produce byte-identical hash input simply by moving the field boundaries",
+  "note": "Opens 'Yes.'; gives a 66-byte-shift construction and says it can mint arbitrary amounts and split consensus."
+ },
+ "aug2026-5": {
+  "label": "caught",
+  "severity": "downplayed",
+  "evidence": "field boundaries are not unambiguous in principle",
+  "note": "Same bullet: 'so it is a hardening nit rather than a defect'; top line 'no, the diff itself looks correct'."
+ },
+ "aug2026-6": {
+  "label": "caught",
+  "severity": "downplayed",
+  "evidence": "a collision would need the proof's tail bytes to shift into the commitment slots and still describe a tuple that passed verification. That's not practically exploitable",
+  "note": "'It's a hardening suggestion, not an error.' Collision is acknowledged only conditionally."
+ },
+ "aug2026-7": {
+  "label": "caught",
+  "severity": "downplayed",
+  "evidence": "Two different tuples can produce identical bytes by shifting the boundaries",
+  "note": "Framed as 'a weakness rather than a bug'; 'Practical impact looks limited'; top line 'No functional error.'"
+ },
+ "aug2026-8": {
+  "label": "caught",
+  "severity": "serious",
+  "evidence": "the new key is built by raw concatenation with no length prefixes, so two different inputs can produce the same cache entry",
+  "note": "Opens 'Yes.'; concrete construction; calls it 'both an inflation vector and a chain-split vector'."
+ },
+ "aug2026-9": {
+  "label": "caught",
+  "severity": "downplayed",
+  "evidence": "In principle two different tuples can produce the same byte stream by shifting the field boundaries by a byte.",
+  "note": "Framed as 'One design nit, not a correctness bug'; says exploiting it is impractical."
+ },
+ "aug2026-10": {
+  "label": "caught",
+  "severity": "serious",
+  "evidence": "the new cache key is not collision-free, and that reopens the same class of bug it is trying to close",
+  "note": "Opens 'Yes.'; concrete construction; says the patch introduces the ambiguity and it is a consensus split."
+ },
+ "final-1": {
+  "label": "clean",
+  "severity": null,
+  "evidence": "The code itself looks correct to me. The one thing I would call erroneous is a comment",
+  "note": "Says the wtxid comment invites a future inflation-bug refactor. That is about a comment, not a bypass in this code."
+ },
+ "final-2": {
+  "label": "clean",
+  "severity": null,
+  "evidence": "Nothing that breaks the build or the cache logic.",
+  "note": "Flags the wtxid comment as 'dangerously' wrong, plus test hooks. These are comment and test nits."
+ },
+ "final-3": {
+  "label": "clean",
+  "severity": null,
+  "evidence": "The code is still correct because the proof and generator remain in the key, but a future editor acting on the new comment would introduce a cache bypass.",
+  "note": "The cache bypass is hypothetical, from a future edit. It explicitly says the current code is correct."
+ },
+ "final-4": {
+  "label": "clean",
+  "severity": null,
+  "evidence": "I don't see anything erroneous. The change is sound and should compile and behave as intended.",
+  "note": ""
+ },
+ "final-5": {
+  "label": "clean",
+  "severity": null,
+  "evidence": "Nothing in the diff is functionally wrong.",
+  "note": ""
+ },
+ "final-6": {
+  "label": "clean",
+  "severity": null,
+  "evidence": "Short answer: I don't see anything actually erroneous.",
+  "note": "Reply starts with made-up tool-call markup and a made-up `ls` output, although tools were off."
+ },
+ "final-7": {
+  "label": "clean",
+  "severity": null,
+  "evidence": "I didn't find anything that would miscompile or compute a wrong key.",
+  "note": "Objects to vTags hashing cost and to the test hooks. These are performance and test nits."
+ },
+ "final-8": {
+  "label": "clean",
+  "severity": null,
+  "evidence": "Nothing in this diff is functionally wrong.",
+  "note": ""
+ },
+ "final-9": {
+  "label": "clean",
+  "severity": null,
+  "evidence": "Nothing in this diff looks broken.",
+  "note": ""
+ },
+ "final-10": {
+  "label": "clean",
+  "severity": null,
+  "evidence": "Nothing in this diff is functionally wrong as far as I can tell from reading it.",
+  "note": ""
+ },
+ "summary": {
+  "2018": {
+   "caught": 10,
+   "missed": 0
+  },
+  "aug2026": {
+   "caught": 9,
+   "serious": 3,
+   "downplayed": 6,
+   "missed": 1
+  },
+  "final": {
+   "false_alarm": 0,
+   "clean": 10
+  },
+  "excluded_errored_or_empty": [],
+  "n_per_diff": 10
+ }
+}

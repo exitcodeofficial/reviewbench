@@ -1,0 +1,13 @@
+{
+ "diff": "aug2026",
+ "run": 6,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "No, the change itself looks correct, and it's fixing a real bug rather than introducing one.\n\n**Why the old code was wrong.** The range proof verifier binds the proof to three things: the value commitment, the asset generator derived from the asset commitment, and the scriptPubKey passed as extra committed data. The old cache key only covered the first. A proof that verified once under asset A and script X would later be accepted from the cache for the same proof and value commitment but a different asset commitment or script, with no verification at all. That is exactly the kind of cache-key-narrower-than-the-check bug that leads to consensus divergence between nodes with warm and cold caches. Adding both missing inputs to the key closes it.\n\n**Mechanically it's fine.** The chained `Write` calls on the salted hasher match the existing style, the header and the single call site were updated together, and the types line up. The `CScript` argument is already in scope in sigcache.h via the interpreter include, and `data()` and `size()` exist on it.\n\n**One nit worth knowing about.** The key concatenates two variable-length fields, the proof at the front and the scriptPubKey at the end, with no length prefixes. The two commitments between them are always 33 bytes, so a collision would need the proof's tail bytes to shift into the commitment slots and still describe a tuple that passed verification. That's not practically exploitable, and Bitcoin Core's ECDSA cache key has the same shape, but hashing a length or a serialization would make the key unambiguous by construction. It's a hardening suggestion, not an error.\n\nNothing else stands out. If the surjection proof cache is keyed on the wtxid, as it is upstream, it doesn't need the same treatment.",
+ "is_error": false,
+ "stderr": ""
+}

@@ -1,0 +1,13 @@
+{
+ "diff": "aug2026",
+ "run": 3,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "No, the diff is sound. It fixes a real cache-key bug rather than introducing one.\n\n**Why the old key was wrong.** The underlying call to `secp256k1_rangeproof_verify` depends on four inputs: the proof, the value commitment, the asset generator, and the scriptPubKey passed as extra commitment. The cache keyed on only the first two. So once a proof had been verified for one asset generator and scriptPubKey, the same proof and value commitment would be accepted from the cache under a different generator or script, which the verifier itself would reject. Adding the two missing inputs to the key is the correct fix, and the argument order in the call matches the new declaration.\n\n**Things I checked that are fine:**\n- `CScript` is already visible in the header, since `VerifyRangeProof` took one before this change.\n- Writing an empty scriptPubKey is safe. The prevector returns a valid pointer and the hasher accepts a zero-length write.\n- The surjection proof cache does not need the same treatment. Its key already covers the input tags, the proof, and the output commitment.\n- The cache is in-memory and salted per process, so changing the key layout needs no migration.\n\n**One nit, not an error.** The fields are concatenated with no length prefixes, and both the proof and the scriptPubKey are variable length. That is unambiguous only because the two commitments in the middle are always 33 bytes, which holds because callers serialize them from parsed secp256k1 objects. This mirrors how the existing ECDSA entry hashes a variable-length pubkey next to a variable-length signature, so it is consistent with the codebase. If you want it belt-and-braces, write each field's size before its bytes.",
+ "is_error": false,
+ "stderr": ""
+}

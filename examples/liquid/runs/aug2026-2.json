@@ -1,0 +1,13 @@
+{
+ "diff": "aug2026",
+ "run": 2,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "No, the change itself is correct, and it closes a real cache-poisoning hole.\n\n**Why it is needed:** The verification call binds the range proof to four inputs: the proof bytes, the value commitment, the asset commitment (the generator), and the scriptPubKey (passed as the proof's extra commit data). The old key hashed only the first two. So a proof validated once for a given asset and scriptPubKey would return a cached \"valid\" for a later output with the same proof and value commitment but a different asset commitment or scriptPubKey, and the real verification would be skipped. Adding both missing inputs to the key is the right fix, and the header, call site, and definition are all consistent.\n\n**One hardening nit, not a bug in what you changed:** The four fields are concatenated with no length framing, and now there are variable-length fields on both ends of two fixed 33-byte fields. That makes shift collisions possible in principle, since the same byte stream can be split as (proof[:-1], proof[-1]+vc[:-1], vc[-1]+ac[:-1], ac[-1]+spk). Because a cache hit happens before the commitment and generator parse calls, a colliding tuple would also bypass those checks. I could not construct a practical exploit, as the attacker would not know the opening of the shifted commitment, so the balance check should still reject it. Writing each field's length before its bytes, or at least the proof's length, removes the question entirely and is a one-line change:\n\n```cpp\nuint32_t n = proof.size();\nhasher.Write((const unsigned char*)&n, 4).Write(proof.data(), proof.size())...\n```\n\nIf you add framing, keep in mind the surjection proof key next to it has the same unframed style, so you may want to treat both the same way for consistency.",
+ "is_error": false,
+ "stderr": ""
+}

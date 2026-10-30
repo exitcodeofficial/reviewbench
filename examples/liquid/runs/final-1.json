@@ -1,0 +1,13 @@
+{
+ "diff": "final",
+ "run": 1,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "The code itself looks correct to me. The one thing I would call erroneous is a comment, plus a few smaller issues worth fixing before merge.\n\n**The wrong comment in `ComputeEntrySurjectionProof`.** It says the wtxid \"commits to all the other data such that we could technically hash only it.\" That is false. One transaction has one wtxid but one surjection proof per blinded output. Hashing only the wtxid would give every output in the tx the same cache entry. Verifying the first output's proof would then mark every other output's proof as valid, which is exactly the kind of cache-poisoning bug this patch is trying to rule out. The retained comment at the call site already says the opposite: \"we need to specify the proof and output asset point to be unique.\" The new comment contradicts it and invites a future \"simplification\" that would be a real inflation bug. Delete that sentence.\n\n**Things that are fine, which I checked.** Serializing a `uint256` and a `const unsigned char[32]` through `CHashWriter` writes raw bytes with no length prefix, so the salt is still exactly one 64-byte SHA256 block and the midstate trick still works. Vectors and `CScript` are CompactSize-prefixed, so the collision-resistance claim in the range-proof comment holds. `GetSHA256()` gives single SHA256, matching the old `Finalize`. The `const` qualifiers work because the hasher is copied, and the `vTags` call site is updated.\n\n**Lesser issues:**\n\n- **Test hooks in the production header and binary.** The two `TestComputeEntry*` functions ship in `sigcache.h` and the server library. A friend declaration from the test TU, or moving the class into the header, would avoid exposing this surface from consensus code.\n- **Inconsistent hasher types.** ECDSA and Schnorr still use raw `CSHA256` writes with no length prefixes while the proof paths use `CHashWriter`. Not wrong, but the class-level comment now describes both as the same thing when they are not.\n- **`vTags` is redundant.** The wtxid already commits to the surjection targets, so adding it changes nothing. Harmless, and the comment correctly frames it as defense in depth.\n- **Include order.** The new `hash.h` include is appended after `util/system.h` instead of in sorted position.\n- **Lost context in the constructor comment.** The old comment explained the `'E'` and `'S'` padding bytes. The replacement does not, though the constants are still used.",
+ "is_error": false,
+ "stderr": ""
+}

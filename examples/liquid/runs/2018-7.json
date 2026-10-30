@@ -1,0 +1,13 @@
+{
+ "diff": "2018",
+ "run": 7,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "Yes. The new cache key is incomplete.\n\n**The key must cover every input that affects the verification result.** The old `ComputeEntry` hashed the range proof, value commitment, asset commitment, and `scriptPubKey`. The new overload hashes only the proof and the value commitment. But `VerifyRangeProof` also depends on `vchAssetCommitment` (the generator the proof is verified against) and on `scriptPubKey` (passed as the extra commitment). Two calls that differ only in those inputs now map to the same cache entry, so a result stored for one can be returned for the other. That makes the cache unsound rather than just slower.\n\n**Fix:** include the asset commitment and `scriptPubKey` in the hash, and consider length-prefixing the variable-size fields so concatenations cannot be ambiguous.\n\nMinor points:\n\n- Dropping the `CPubKey pubkey(vchValueCommitment)` construction is fine on its own. That wrapper added nothing.\n- `nonce.size()` on a `uint256` is 32, so that part is equivalent to the old `nonce.begin(), 32`.\n- The old overload still exists, so this is now an overload set. That is harmless but worth checking that nothing else depended on the old signature for range proofs.",
+ "is_error": false,
+ "stderr": ""
+}

@@ -1,0 +1,13 @@
+{
+ "diff": "aug2026",
+ "run": 7,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "No functional error. The change is correct in substance: the Elements rangeproof verifier commits to the scriptPubKey as `extra_commit` and to the asset generator, so a cache key built only from proof and value commitment let a proof verified under one (asset, script) pair satisfy a lookup under a different pair. Adding both to the key closes that.\n\nOne thing I would flag for review, though it is a weakness rather than a bug:\n\n- **The key is an unframed concatenation of two variable-length fields.** The layout is `proof || value_commit(33) || asset_commit(33) || scriptPubKey`, with no length prefixes. Two different tuples can produce identical bytes by shifting the boundaries: take a valid output and build a second one with `proof' = proof || vc[0]`, `vc' = vc[1..] || ac[0]`, `ac' = ac[1..] || spk[0]`, `spk' = spk[1..]`. The second output hits the cache and skips verification entirely, since the proof blob is never parsed before the `Get`.\n- **Practical impact looks limited.** Turning that into inflation would require knowing openings for both the original commitment and the shifted one, which fixes the x-coordinate of one from the other. I do not see a feasible path. The old key had the same shape for `proof || commitment`, and upstream Bitcoin's ECDSA entry concatenates variable-length pubkey and sig too, but those are parsed and validated before the lookup, whereas the rangeproof here is opaque.\n- **Cheap hardening.** Write a CompactSize length before `proof` and before `scriptPubKey`, or hash each component separately. The cache is in-memory only, so changing the key format has no migration cost.\n\nEverything else checks out: header and implementation signatures match, `CScript::data()`/`size()` are fine for the hasher, an empty scriptPubKey writes zero bytes harmlessly, and any other caller of `ComputeEntryRangeProof` would fail to compile rather than silently use the old key.",
+ "is_error": false,
+ "stderr": ""
+}

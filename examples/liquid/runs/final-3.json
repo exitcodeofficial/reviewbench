@@ -1,0 +1,13 @@
+{
+ "diff": "final",
+ "run": 3,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "The code compiles and the hashing change is sound, but one comment is wrong in a way that matters, and there are a few smaller issues.\n\n**Wrong and dangerous comment in the surjection path.** The new comment in `ComputeEntrySurjectionProof` says the wtxid \"commits to all the other data such that we could technically hash only it.\" That is false. Every output of a transaction shares the same wtxid. If the cache key were only the wtxid, verifying output 0's surjection proof would populate an entry that output 1's lookup would hit, so output 1 would be accepted without verification. The surviving comment just above the call site in `VerifySurjectionProof` says the opposite (\"we need to specify the proof and output asset point to be unique\"), so the file now contradicts itself. The code is still correct because the proof and generator remain in the key, but a future editor acting on the new comment would introduce a cache bypass. Fix the comment.\n\n**Things I checked that are fine:**\n- `<< nonce << PADDING_*` writes 64 raw bytes. The uint256 serializer and the `const unsigned char (&)[N]` overload both write without a length prefix, so the midstate still ends exactly on a SHA256 chunk boundary as the comment claims.\n- `GetSHA256()` is single SHA256, matching the old `Finalize` behavior, not the double-SHA `GetHash()`.\n- Copying a `CHashWriter` in a `const` method works. Its `nType` and `nVersion` members are `const`, which only blocks copy assignment, not copy construction. It does make `CSignatureCache` non-assignable, which is harmless for a static global.\n- Length-prefixing vectors and the CScript does remove the old boundary ambiguity between the variable-length proof and script.\n- Hashing `vTags` is redundant but correct. Order matters for the proof's input bitmap, so keying on order is right.\n\n**Minor points:**\n- The hunk cuts off before `PADDING_SURJECTION_PROOF`. Confirm it is not `'S'`, which would collide with the Schnorr midstate. Upstream Elements uses lowercase `'s'`.\n- Hashing all of `vTags` runs per output, so the cost is inputs times outputs times 64 bytes on every call, including cache hits, plus a heap allocation to build the flat vector. It is small next to proof verification, but you could write the tags straight into the hasher with a CompactSize count and skip the temporary.\n- The test hooks are declared unconditionally in the public header and linked into production. Consider guarding them or moving the computation into a testable class rather than exporting free functions that forward to anonymous-namespace globals.",
+ "is_error": false,
+ "stderr": ""
+}

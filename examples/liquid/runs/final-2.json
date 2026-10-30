@@ -1,0 +1,13 @@
+{
+ "diff": "final",
+ "run": 2,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "Nothing that breaks the build or the cache logic. The serialization change is sound: every field is length-prefixed, the midstates are still exactly 64 bytes, and the local copy of the hasher keeps the const method thread-safe. The problems are in the comments and the test hooks.\n\n**The surjection-proof comment is wrong, and dangerously so.** It says the wtxid \"commits to all the other data such that we could technically hash only it.\" That is false. A transaction has one wtxid but one surjection proof per output. Keying on wtxid alone would make output 0's verified proof a cache hit for every other output in the same transaction. The original comment said exactly this (\"we need to specify the proof and output asset point to be unique\"), and the new text invites the refactor it was warning against. Keep the \"defense against refactoring\" idea, but state the real reason the proof and generator must be in the key.\n\n**The range-proof rationale is muddled.** It argues the commitments and script belong in the key because \"these are committed to by the rangeproof itself; a change in any of them would invalidate the proof.\" That is backwards. The cache lookup runs before verification, so proof-level commitment is irrelevant. They belong in the key because the verifier's answer depends on them. The conclusion is right, so this is a wording fix, but the \"NOTE FOR FUTURE EDITORS\" block makes the same argument and should match.\n\n**Test hooks are unconditionally exported from a consensus library.** Two new non-static free functions with no namespace or `#ifdef` guard end up in the production binary. The usual pattern is a test-only accessor guarded at build time, or putting the computation in a reusable function and testing that. Not a correctness bug.\n\nSmaller points:\n\n- The new header comment for the four hashers drops the documented entry layout for ECDSA and Schnorr. Those two paths still use raw `CSHA256` and that layout, so the old comment should stay for them.\n- The surjection generators are hashed from the 64-byte internal representation, not the 33-byte serialized form. That is fine in-process, but worth a comment so nobody assumes the key is portable.\n- `hash.h` is appended after `util/system.h` instead of in sorted order, and the initializer list is missing a space after the comma.\n\nI could not compile this against the Elements tree because the working directory has no source checkout, so the above is from reading the diff.",
+ "is_error": false,
+ "stderr": ""
+}

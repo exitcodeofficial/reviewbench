@@ -1,0 +1,13 @@
+{
+ "diff": "aug2026",
+ "run": 8,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "Yes. The change itself is the right fix (the old key let a cached proof be reused under a different asset or script), but the new key is built by raw concatenation with no length prefixes, so two different inputs can produce the same cache entry.\n\n**The problem:** the hash input is `proof || value_commit || asset_commit || script`. The proof and the script are both variable length, and the two 33-byte commitments sit between them. Nothing records where one field ends and the next begins, so the boundary between the proof and the script can slide.\n\n**Concrete collision:** take any valid output the attacker builds themselves, with proof P, value commitment X, asset commitment Y, and a scriptPubKey of the form C || A || S. That verifies, enters the mempool, and gets cached. Now present a second output with proof P || X || Y, value commitment C, asset commitment A, and script S. Its hash input is byte-for-byte identical, so the lookup hits and `VerifyRangeProof` returns true before parsing anything. C and A never went through a rangeproof check, and P proves nothing about C. Because the cache is consulted before any parsing, the 33-byte prefix checks on commitments and generators don't help here. Any node with the first entry cached accepts the second output, and any node without it rejects it, which is both an inflation vector and a chain-split vector.\n\n**Fix:** make the encoding unambiguous. Either write a length prefix before each variable-length field (for example a CompactSize or a fixed 4-byte size), or at minimum put the two fixed-size commitments first and prefix the proof with its length. Bitcoin's own `ComputeEntryECDSA` gets away with no delimiters only because its fields are self-delimiting (fixed hash, pubkey whose first byte fixes its length, then the signature), and that property does not carry over to this layout.\n\nOne assumption worth confirming against the library you link: this is only exploitable if `secp256k1_rangeproof_verify` would otherwise reject P || X || Y for having trailing bytes. secp256k1-zkp does enforce the proof length strictly as far as I know, which is exactly why the cache hit matters. Even if it tolerated trailing bytes, the key should still be delimited, since the point of the cache is to never return true for a tuple that was not actually verified.",
+ "is_error": false,
+ "stderr": ""
+}

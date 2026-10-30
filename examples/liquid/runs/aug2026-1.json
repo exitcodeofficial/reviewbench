@@ -1,0 +1,13 @@
+{
+ "diff": "aug2026",
+ "run": 1,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "No, the core change looks correct. The old cache key only covered the proof and value commitment, but rangeproof verification also depends on the asset commitment (it selects the generator) and the scriptPubKey (passed as extra commit data). A valid proof cached once could therefore be replayed against a different asset or script and pass by cache hit. Adding both fields to the key closes that.\n\nTwo things worth flagging, one minor and one real:\n\n- **Header and callers match.** The signature change is mirrored in sigcache.h, and VerifyRangeProof already had both extra values in scope. Nothing else in the tree calls ComputeEntryRangeProof, so no missed call sites unless downstream tests or benchmarks use it.\n\n- **Concatenation without length prefixes.** The key is proof || value_commitment || asset_commitment || scriptPubKey, all written raw. The two commitments are fixed at 33 bytes whenever callers have already checked IsCommitment, which they do in VerifyAmounts. But the proof and the scriptPubKey are both variable length and sit at the ends. That means two different inputs can hash to the same key if you shift the boundary: a proof one byte shorter plus a script one byte longer, with the middle 66 bytes re-sliced across the commitments. Since the cache lookup happens before any parsing or length validation of the proof, such a lookup would hit and return true without ever calling the verifier. An attacker would still need to grind commitment prefix bytes and would end up with a commitment whose opening they do not know, so turning this into a balance-passing transaction is not obvious. But the cache is a consensus-critical component and it should not admit collisions between distinct inputs at all. The ECDSA cache gets away with raw concatenation only because DER signatures and compressed pubkeys are self-delimiting. Rangeproofs are not in a way that is checked here.\n\nThis ambiguity already existed before the patch, since the old key was proof || commitment, so the diff does not introduce it. But since the patch is already touching this function to fix a key-coverage bug, it would be the right moment to fix it. The straightforward fix is to write a length prefix before each variable-length field, for example via a CompactSize or a fixed-width size write, or to hash each field separately and combine the digests.\n\nEverything else in the diff is fine as written.",
+ "is_error": false,
+ "stderr": ""
+}

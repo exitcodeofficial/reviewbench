@@ -1,0 +1,13 @@
+{
+ "diff": "final",
+ "run": 4,
+ "exit": 0,
+ "cli": "2.1.309",
+ "model": [
+  "claude-haiku-5-5",
+  "claude-fable-5-1"
+ ],
+ "result": "I don't see anything erroneous. The change is sound and should compile and behave as intended.\n\nWhat I checked:\n\n- **Injectivity of the new keys.** Vectors and CScript serialize with a compactsize length prefix, and the uint256 wtxid is fixed 32 bytes, so no two argument tuples share an encoding. The original rangeproof key was genuinely ambiguous at the proof/scriptPubKey boundary, since both are variable length with no separator. The original surjection key was already unambiguous (fixed 32 + variable proof + fixed 64), so that part is hardening rather than a fix.\n- **Midstate stays one SHA256 block.** The uint256 nonce serializes as 32 raw bytes and the fixed-size `unsigned char[32]` overload writes 32 raw bytes with no prefix, so the salted hasher still has exactly 64 bytes absorbed.\n- **Copying a CHashWriter** is fine. The const members block assignment but not copy-construction, and taproot's tagged hashers use the same pattern. `GetSHA256()` exists in any tree new enough to have the Schnorr hasher.\n- **Const-qualifying the compute methods** is correct since they only copy the member hasher.\n\nNits, none blocking:\n\n- **Test hooks have external linkage in a consensus header.** Nothing can poison the cache through them since `Set` isn't exposed, but I'd still prefer guarding them or using a friend test fixture rather than widening the public API.\n- **Magic number.** Use `sizeof(tag.data)` instead of 64 in the reserve and the comment.\n- **Per-call allocation.** Building `vTagsBytes` copies every generator on each verification. You could write the compactsize count and then stream each tag's bytes straight into the hasher.\n- **Comment accuracy.** The wtxid does not directly commit to the surjection targets. They come from the spent UTXOs or the pegin witness, so the commitment is only transitive via outpoints. The sentence is slightly misleading, though including the tags in the key makes it moot.\n- **Inconsistency.** The ECDSA and Schnorr hashers remain raw CSHA256 while the proof hashers are CHashWriter. Harmless, but the updated class comment now describes them all as the same thing.\n- **Include order.** `hash.h` landed after `util/system.h` instead of alphabetically.",
+ "is_error": false,
+ "stderr": ""
+}
